@@ -1,0 +1,5 @@
+email,password,role
+admin@mycsu.edu,cGFzc3dvcmQx,admin
+admin1@mycsu.edu,cGFzc3dvcmQx,admin
+prof@mycsu.edu,cGFzc3dvcmQy,professor
+sam@mycsu.edu,cGFzc3dvcmQz,student
