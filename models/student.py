@@ -55,6 +55,7 @@ class Student:
         FileHandler.delete_from_csv(file_path, "email", email)
         print(f"Student with email {email} deleted successfully!")
 
+    # all methods above will be utilized by admins (NOT students)
     @staticmethod
     def update_student(email, updated_data, file_path: str = None):
         """
@@ -72,6 +73,7 @@ class Student:
         FileHandler.update_csv(file_path, "email", email, updated_data)
         print(f"Student with email {email} updated successfully!")
 
+    # method utilized by a student user 
     @staticmethod
     def check_my_grades(email, course_id=None):
         file_path = Student.DATA_FILE
@@ -86,6 +88,7 @@ class Student:
             raise ValueError(f"No record for course {course_id} for {email}")
         return [(r.get("course_id"), r.get("grade")) for r in my_rows]
 
+    # method utilized by a student user 
     @staticmethod
     def check_my_marks(email, course_id=None):
         file_path = Student.DATA_FILE

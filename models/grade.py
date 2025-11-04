@@ -2,7 +2,7 @@ from utils.file_handler import FileHandler
 
 class Grade:
     DATA_FILE = "data/grades.csv"
-    FIELDS = ["grade_id", "grade", "marks_range"]  # marks_range example: "90-100"
+    FIELDS = ["grade_id", "grade", "marks_range"]  
 
     def __init__(self, grade_id, grade, marks_range):
         self.grade_id = grade_id
