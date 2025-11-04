@@ -12,6 +12,47 @@ def ensure_headers():
     FileHandler.write_header_if_missing(Course.DATA_FILE, Course.FIELDS)
     FileHandler.write_header_if_missing(Professor.DATA_FILE, Professor.FIELDS)
     FileHandler.write_header_if_missing(LoginUser.DATA_FILE, LoginUser.FIELDS)
+def seed_demo_data():
+    """
+    One-time seed for demo. Run once, then comment out.
+    Safe: only adds if CSVs are (nearly) empty.
+    """
+    # Seed courses
+    if not FileHandler.read_all(Course.DATA_FILE):
+        Course.add_new_course(Course("DATA200", "Data Foundations", "Intro to data"))
+        Course.add_new_course(Course("DATA210", "Database Systems", "SQL and design"))
+        Course.add_new_course(Course("DATA220", "Algorithms", "Core algorithms"))
+
+    # Seed professors (one per course)
+    if not FileHandler.read_all(Professor.DATA_FILE):
+        Professor.add_new_professor(Professor("P001", "Ada Lovelace", "Associate", "DATA200"))
+        Professor.add_new_professor(Professor("P002", "Alan Turing", "Full", "DATA210"))
+        Professor.add_new_professor(Professor("P003", "Grace Hopper", "Associate", "DATA220"))
+
+    # Seed login users (admin + one professor + one student)
+    from models.login_user import LoginUser
+    if not FileHandler.read_all(LoginUser.DATA_FILE):
+        LoginUser.add_user(LoginUser("admin@mycsu.edu", "password1", "admin"))
+        LoginUser.add_user(LoginUser("prof@mycsu.edu", "profpass", "professor"))
+        LoginUser.add_user(LoginUser("student1@mycsu.edu", "studpass", "student"))
+
+    # Seed students (only if very few exist)
+    existing_students = FileHandler.read_all(Student.DATA_FILE)
+    if len(existing_students) < 10:
+        # Add 60 students across 3 courses with varied marks
+        for i in range(60):
+            course_id = "DATA200" if i % 3 == 0 else ("DATA210" if i % 3 == 1 else "DATA220")
+            grade = "A" if i % 10 < 3 else ("B" if i % 10 < 7 else "C")
+            marks = (i * 7) % 101  # spreads 0..100
+            s = Student(
+                f"student{i}@mycsu.edu", f"First{i}", f"Last{i}",
+                course_id, grade, marks
+            )
+            try:
+                Student.add_new_student(s)
+            except ValueError:
+                pass  # skip duplicates if you re-run accidentally
+
 
 # Login helpers
 def get_user_role(email: str) -> str:
@@ -409,6 +450,8 @@ def menu_admin():
 # MAIN
 def main():
     ensure_headers()
+    # added a seed_demo_data to add synthetic data for average/median data purposes 
+    # seed_demo_data()
 
     while True:
         print("\n===== CheckMyGrade =====")
