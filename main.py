@@ -13,16 +13,14 @@ def ensure_headers():
     FileHandler.write_header_if_missing(LoginUser.DATA_FILE, LoginUser.FIELDS)
 
 def get_user_role(email: str):
-    """Lookup role from login.csv for the logged-in user."""
+    """Lookup role for user."""
     rows = FileHandler.read_all(LoginUser.DATA_FILE)
     for r in rows:
         if r.get("email") == email:
             return r.get("role")
     return None
 
-# --------------------------
-# Menus: Students 
-# --------------------------
+# Student Menu (for admin) 
 def admin_students_menu():
     while True:
         print("\n=== Admin: Students ===")
@@ -86,9 +84,7 @@ def admin_students_menu():
         else:
             print("Invalid choice.")
 
-# --------------------------
-# Menus: Courses CRUD (Admin)
-# --------------------------
+# Admin Menu 
 def admin_courses_menu():
     while True:
         print("\n=== Admin: Courses ===")
@@ -149,9 +145,7 @@ def admin_courses_menu():
         else:
             print("Invalid choice.")
 
-# --------------------------
-# Menus: Professors CRUD (Admin)
-# --------------------------
+# Admin Professors menu 
 def admin_professors_menu():
     while True:
         print("\n=== Admin: Professors ===")
@@ -216,9 +210,7 @@ def admin_professors_menu():
         else:
             print("Invalid choice.")
 
-# --------------------------
-# Professor Menu
-# --------------------------
+# Professor Menu 
 def professor_menu():
     while True:
         print("\n=== Professor Menu ===")
@@ -258,9 +250,7 @@ def professor_menu():
         else:
             print("Invalid choice.")
 
-# --------------------------
-# Student Menu 
-# --------------------------
+# Student menu 
 def student_menu(current_email: str):
     while True:
         print("\n=== Student Menu ===")
@@ -300,9 +290,7 @@ def student_menu(current_email: str):
         else:
             print("Invalid choice.")
 
-# --------------------------
-# Admin Main Menu (hub)
-# --------------------------
+# Admin Dashboard 
 def admin_main_menu():
     while True:
         print("\n===== Admin Dashboard =====")
@@ -323,9 +311,7 @@ def admin_main_menu():
         else:
             print("Invalid choice.")
 
-# --------------------------
-# App entry: login + route by role
-# --------------------------
+# App entry 
 def main():
     ensure_headers()
 

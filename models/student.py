@@ -1,7 +1,6 @@
 from utils.file_handler import FileHandler
 
 class Student:
-    # ✅ Add these so main.ensure_headers() can find them
     DATA_FILE = "data/students.csv"
     FIELDS = ["email", "first_name", "last_name", "course_id", "grade", "marks"]
 
@@ -73,7 +72,6 @@ class Student:
         FileHandler.update_csv(file_path, "email", email, updated_data)
         print(f"Student with email {email} updated successfully!")
 
-    # (Optional) simplified helpers you added earlier:
     @staticmethod
     def check_my_grades(email, course_id=None):
         file_path = Student.DATA_FILE
