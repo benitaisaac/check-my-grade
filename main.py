@@ -1,49 +1,122 @@
-
+# main.py
+import time
 from utils.file_handler import FileHandler
 from models.student import Student
 from models.course import Course
 from models.professor import Professor
 from models.login_user import LoginUser
 
+# Make sure headers exist 
 def ensure_headers():
-    """Make sure all CSVs exist with headers before we start."""
     FileHandler.write_header_if_missing(Student.DATA_FILE, Student.FIELDS)
     FileHandler.write_header_if_missing(Course.DATA_FILE, Course.FIELDS)
     FileHandler.write_header_if_missing(Professor.DATA_FILE, Professor.FIELDS)
     FileHandler.write_header_if_missing(LoginUser.DATA_FILE, LoginUser.FIELDS)
 
-def get_user_role(email: str):
-    """Lookup role for user."""
+# Login helpers
+def get_user_role(email: str) -> str:
+    """Return role for a given email from login.csv (or '' if not found)."""
     rows = FileHandler.read_all(LoginUser.DATA_FILE)
     for r in rows:
         if r.get("email") == email:
-            return r.get("role")
-    return None
+            return r.get("role", "")
+    return ""
 
-# Student Menu (for admin) 
-def admin_students_menu():
+def login_flow():
+    """Prompt for email/password and authenticate up to 3 attempts."""
+    attempts = 0
+    while attempts < 3:
+        email = input("Email: ").strip()
+        password = input("Password: ").strip()
+        if LoginUser.authenticate(email, password):
+            role = get_user_role(email)
+            if role:
+                print(f"Login successful. Role: {role}")
+                return email, role
+            else:
+                print("User found but role missing. Contact admin.")
+                return None, None
+        else:
+            print("Invalid credentials. Try again.")
+            attempts += 1
+    print("Too many failed attempts.")
+    return None, None
+
+# Students: Search & Sort submenu (Admin portal)
+def menu_students_search_sort():
     while True:
-        print("\n=== Admin: Students ===")
+        print("\n=== Students: Search & Sort ===")
+        print("1) Search by email (timed)")
+        print("2) Search by name contains (timed)")
+        print("3) Sort by marks ASC")
+        print("4) Sort by marks DESC")
+        print("5) Sort by name ASC (Last, First)")
+        print("6) Sort by name DESC (Last, First)")
+        print("7) Back")
+        choice = input("Choose: ").strip()
+
+        if choice == "1":
+            email = input("Email to search: ").strip()
+            row, elapsed = Student.search_by_email(email)
+            print(f"Time: {elapsed:.6f} s")
+            print("Result:", row if row else "Not found")
+
+        elif choice == "2":
+            kw = input("Name contains: ").strip()
+            rows, elapsed = Student.search_by_name(kw)
+            print(f"Time: {elapsed:.6f} s")
+            print(f"Found {len(rows)} record(s).")
+            for r in rows[:10]:
+                print(r)
+            if len(rows) > 10:
+                print(f"... and {len(rows)-10} more")
+
+        elif choice in ("3", "4", "5", "6"):
+            if choice == "3":
+                by, desc = "marks", False
+            elif choice == "4":
+                by, desc = "marks", True
+            elif choice == "5":
+                by, desc = "name", False
+            else:
+                by, desc = "name", True
+
+            t0 = time.perf_counter()
+            rows = Student.sort_students(by=by, descending=desc)
+            t1 = time.perf_counter()
+            print(f"Sort time: {(t1 - t0):.6f} s")
+            for r in rows[:10]:
+                print(r)
+
+        elif choice == "7":
+            break
+        else:
+            print("Invalid choice.")
+
+# Full CRUD Menus (Admin)
+def menu_students_admin():
+    while True:
+        print("\n=== Students (Admin) ===")
         print("1) Add student")
         print("2) List students")
         print("3) Update student")
         print("4) Delete student")
-        print("5) Back")
+        print("5) Search & Sort (timed)")
+        print("6) Back")
         choice = input("Choose: ").strip()
 
         if choice == "1":
             email = input("Email: ").strip()
             first = input("First name: ").strip()
             last = input("Last name: ").strip()
-            course_id = input("Course ID (e.g., DATA200): ").strip()
-            grade = input("Grade (e.g., A): ").strip()
-            marks = input("Marks (0–100): ").strip()
+            course = input("Course ID: ").strip()
+            grade = input("Grade: ").strip()
+            marks = input("Marks: ").strip()
             try:
-                s = Student(email, first, last, course_id, grade, marks)
+                s = Student(email, first, last, course, grade, marks)
                 Student.add_new_student(s)
-                print("Student added.")
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "2":
             rows = FileHandler.read_all(Student.DATA_FILE)
@@ -55,39 +128,39 @@ def admin_students_menu():
 
         elif choice == "3":
             email = input("Email to update: ").strip()
-            new_grade = input("New grade (blank to skip): ").strip()
-            new_marks = input("New marks (blank to skip): ").strip()
-            updated = {}
-            if new_grade:
-                updated["grade"] = new_grade
-            if new_marks:
-                updated["marks"] = new_marks
-            if not updated:
-                print("Nothing to update.")
-                continue
+            grade = input("New grade (blank to skip): ").strip()
+            marks = input("New marks (blank to skip): ").strip()
+            data = {}
+            if grade:
+                data["grade"] = grade
+            if marks:
+                data["marks"] = marks
             try:
-                Student.update_student(email, updated)
-                print("Student updated.")
+                if data:
+                    Student.update_student(email, data)
+                else:
+                    print("Nothing to update.")
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "4":
             email = input("Email to delete: ").strip()
             try:
                 Student.delete_student(email)
-                print("Student deleted.")
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "5":
+            menu_students_search_sort()
+
+        elif choice == "6":
             break
         else:
             print("Invalid choice.")
 
-# Admin Menu 
-def admin_courses_menu():
+def menu_courses_admin():
     while True:
-        print("\n=== Admin: Courses ===")
+        print("\n=== Courses (Admin) ===")
         print("1) Add course")
         print("2) List courses")
         print("3) Update course")
@@ -96,15 +169,14 @@ def admin_courses_menu():
         choice = input("Choose: ").strip()
 
         if choice == "1":
-            course_id = input("Course ID: ").strip()
-            name = input("Name: ").strip()
+            cid = input("Course ID: ").strip()
+            name = input("Course name: ").strip()
             desc = input("Description: ").strip()
             try:
-                c = Course(course_id, name, desc)
+                c = Course(cid, name, desc)
                 Course.add_new_course(c)
-                print("Course added.")
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "2":
             rows = FileHandler.read_all(Course.DATA_FILE)
@@ -115,40 +187,37 @@ def admin_courses_menu():
                     print(r)
 
         elif choice == "3":
-            course_id = input("Course ID to update: ").strip()
-            name = input("New name (blank to skip): ").strip()
-            desc = input("New description (blank to skip): ").strip()
-            updated = {}
-            if name:
-                updated["name"] = name
-            if desc:
-                updated["description"] = desc
-            if not updated:
-                print("Nothing to update.")
-                continue
+            cid = input("Course ID to update: ").strip()
+            new_name = input("New name: ").strip()
+            new_desc = input("New description: ").strip()
+            data = {}
+            if new_name:
+                data["name"] = new_name
+            if new_desc:
+                data["description"] = new_desc
             try:
-                Course.update_course(course_id, updated)
-                print("Course updated.")
+                if data:
+                    Course.update_course(cid, data)
+                else:
+                    print("Nothing to update.")
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "4":
-            course_id = input("Course ID to delete: ").strip()
+            cid = input("Course ID to delete: ").strip()
             try:
-                Course.delete_course(course_id)
-                print("Course deleted.")
+                Course.delete_course(cid)
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "5":
             break
         else:
             print("Invalid choice.")
 
-# Admin Professors menu 
-def admin_professors_menu():
+def menu_professors_admin():
     while True:
-        print("\n=== Admin: Professors ===")
+        print("\n=== Professors (Admin) ===")
         print("1) Add professor")
         print("2) List professors")
         print("3) Update professor")
@@ -157,16 +226,15 @@ def admin_professors_menu():
         choice = input("Choose: ").strip()
 
         if choice == "1":
-            prof_id = input("Professor ID: ").strip()
+            pid = input("Professor ID: ").strip()
             name = input("Name: ").strip()
             rank = input("Rank: ").strip()
-            course_id = input("Course ID: ").strip()
+            cid = input("Course ID: ").strip()
             try:
-                p = Professor(prof_id, name, rank, course_id)
+                p = Professor(pid, name, rank, cid)
                 Professor.add_new_professor(p)
-                print("Professor added.")
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "2":
             rows = FileHandler.read_all(Professor.DATA_FILE)
@@ -177,167 +245,196 @@ def admin_professors_menu():
                     print(r)
 
         elif choice == "3":
-            prof_id = input("Professor ID to update: ").strip()
-            name = input("New name (blank to skip): ").strip()
-            rank = input("New rank (blank to skip): ").strip()
-            course_id = input("New course ID (blank to skip): ").strip()
-            updated = {}
-            if name:
-                updated["name"] = name
-            if rank:
-                updated["rank"] = rank
-            if course_id:
-                updated["course_id"] = course_id
-            if not updated:
-                print("Nothing to update.")
-                continue
+            pid = input("Professor ID to update: ").strip()
+            new_name = input("New name: ").strip()
+            new_rank = input("New rank: ").strip()
+            new_course = input("New course_id: ").strip()
+            data = {}
+            if new_name:
+                data["name"] = new_name
+            if new_rank:
+                data["rank"] = new_rank
+            if new_course:
+                data["course_id"] = new_course
             try:
-                Professor.update_professor(prof_id, updated)
-                print("Professor updated.")
+                if data:
+                    Professor.update_professor(pid, data)
+                else:
+                    print("Nothing to update.")
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "4":
-            prof_id = input("Professor ID to delete: ").strip()
+            pid = input("Professor ID to delete: ").strip()
             try:
-                Professor.delete_professor(prof_id)
-                print("Professor deleted.")
+                Professor.delete_professor(pid)
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
         elif choice == "5":
             break
         else:
             print("Invalid choice.")
 
-# Professor Menu 
-def professor_menu():
+# Professor Portal (limited)
+def menu_professor_portal(email: str):
+    """
+    Professor portal:
+    - List ALL students
+    - List students by course_id
+    - Search student by email (timed)
+    - Update a student's grade/marks
+    - Course stats (avg/median/min/max)
+    """
     while True:
-        print("\n=== Professor Menu ===")
-        print("1) List all students")
-        print("2) Update a student's grade/marks")
-        print("3) Back")
+        print("\n=== Professor Portal ===")
+        print("1) List ALL students")
+        print("2) List students by course_id")
+        print("3) Search student by email (timed)")
+        print("4) Update student grade/marks")
+        print("5) Course stats (avg/median/min/max)")
+        print("6) Back")
         choice = input("Choose: ").strip()
 
         if choice == "1":
             rows = FileHandler.read_all(Student.DATA_FILE)
             if not rows:
-                print("No students yet.")
+                print("No students found.")
             else:
                 for r in rows:
                     print(r)
 
         elif choice == "2":
-            email = input("Student email to update: ").strip()
+            cid = input("Course ID: ").strip()
+            rows = FileHandler.read_all(Student.DATA_FILE)
+            filtered = [r for r in rows if r.get("course_id") == cid]
+            if not filtered:
+                print("No students for that course.")
+            else:
+                for r in filtered:
+                    print(r)
+
+        elif choice == "3":
+            email_q = input("Student email to search: ").strip()
+            row, elapsed = Student.search_by_email(email_q)
+            print(f"Time: {elapsed:.6f} s")
+            print("Result:", row if row else "Not found")
+
+        elif choice == "4":
+            target_email = input("Student email to update: ").strip()
             new_grade = input("New grade (blank to skip): ").strip()
             new_marks = input("New marks (blank to skip): ").strip()
-            updated = {}
+            data = {}
             if new_grade:
-                updated["grade"] = new_grade
+                data["grade"] = new_grade
             if new_marks:
-                updated["marks"] = new_marks
-            if not updated:
+                data["marks"] = new_marks
+            if not data:
                 print("Nothing to update.")
                 continue
             try:
-                Student.update_student(email, updated)
-                print("Student updated.")
+                Student.update_student(target_email, data)
+                print("Update successful.")
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
 
-        elif choice == "3":
+        elif choice == "5":
+            cid = input("Course ID for stats: ").strip()
+            stats = Student.course_stats(cid)
+            if not stats:
+                print("No marks found for that course.")
+            else:
+                print("\n--- Course Stats ---")
+                print(f"Course:   {stats['course_id']}")
+                print(f"Count:    {stats['count']}")
+                print(f"Average:  {stats['average']}")
+                print(f"Median:   {stats['median']}")
+                print(f"Min:      {stats['min']}")
+                print(f"Max:      {stats['max']}")
+
+        elif choice == "6":
             break
         else:
             print("Invalid choice.")
 
-# Student menu 
-def student_menu(current_email: str):
+
+
+# Student Portal (limited)
+def menu_student_portal(email: str):
+    """
+    Simple student portal:
+    - View your own record
+    """
     while True:
-        print("\n=== Student Menu ===")
-        print("1) Check my marks")
-        print("2) Check my grades")
-        print("3) Back")
+        print("\n=== Student Portal ===")
+        print("1) View my record")
+        print("2) Back")
         choice = input("Choose: ").strip()
 
         if choice == "1":
-            course = input("Enter course ID (blank = all): ").strip() or None
-            try:
-                result = Student.check_my_marks(current_email, course)
-                if isinstance(result, list):
-                    print("\nYour marks:")
-                    for cid, mark in result:
-                        print(f"{cid}: {mark}")
-                else:
-                    print(f"\nMarks: {result}")
-            except ValueError as e:
-                print(e)
-
+            rows = FileHandler.read_all(Student.DATA_FILE)
+            me = next((r for r in rows if r.get("email") == email), None)
+            print("Your record:", me if me else "Not found")
         elif choice == "2":
-            course = input("Enter course ID (blank = all): ").strip() or None
-            try:
-                result = Student.check_my_grades(current_email, course)
-                if isinstance(result, list):
-                    print("\nYour grades:")
-                    for cid, grade in result:
-                        print(f"{cid}: {grade}")
-                else:
-                    print(f"\nGrade: {result}")
-            except ValueError as e:
-                print(e)
-
-        elif choice == "3":
             break
         else:
             print("Invalid choice.")
 
-# Admin Dashboard 
-def admin_main_menu():
+
+# Admin Portal (full control + search/sort)
+def menu_admin():
     while True:
-        print("\n===== Admin Dashboard =====")
+        print("\n=== Admin Portal ===")
         print("1) Students")
         print("2) Courses")
         print("3) Professors")
-        print("4) Logout")
+        print("4) Search & Sort Students (timed)")
+        print("5) Back")
         choice = input("Choose: ").strip()
 
         if choice == "1":
-            admin_students_menu()
+            menu_students_admin()
         elif choice == "2":
-            admin_courses_menu()
+            menu_courses_admin()
         elif choice == "3":
-            admin_professors_menu()
+            menu_professors_admin()
         elif choice == "4":
+            menu_students_search_sort()
+        elif choice == "5":
             break
         else:
             print("Invalid choice.")
 
-# App entry 
+
+# MAIN
 def main():
     ensure_headers()
 
-    print("===== CheckMyGrade Login =====")
-    email = input("Email: ").strip()
-    password = input("Password: ").strip()
+    while True:
+        print("\n===== CheckMyGrade =====")
+        print("1) Login")
+        print("2) Exit")
+        choice = input("Choose: ").strip()
 
-    if not LoginUser.authenticate(email, password):
-        print("Invalid email or password.")
-        return
+        if choice == "1":
+            email, role = login_flow()
+            if not email:
+                continue
 
-    role = get_user_role(email)
-    if role is None:
-        print("No role found for this user.")
-        return
+            if role == "admin":
+                menu_admin()
+            elif role == "professor":
+                menu_professor_portal(email)
+            elif role == "student":
+                menu_student_portal(email)
+            else:
+                print("Unknown role. Contact admin.")
 
-    print(f"Logged in as {role}")
-
-    if role == "admin":
-        admin_main_menu()
-    elif role == "professor":
-        professor_menu()
-    elif role == "student":
-        student_menu(email)
-    else:
-        print("Unknown role. Please contact admin.")
+        elif choice == "2":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid choice.")
 
 if __name__ == "__main__":
     main()
